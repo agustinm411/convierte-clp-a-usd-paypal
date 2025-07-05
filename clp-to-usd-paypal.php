@@ -9,6 +9,7 @@
  */
 require plugin_dir_path( __FILE__ ) . 'includes/functions.php';
 require plugin_dir_path( __FILE__ ) . 'includes/config.php';
+require_once plugin_dir_path(__FILE__) . 'includes/updater.php';
 if (!defined('ABSPATH')) {
     exit;
 }
@@ -48,4 +49,3 @@ function cambiar_moneda_si_es_paypal() {
     }
 }
 
-require_once plugin_dir_path(__FILE__) . 'includes/updater.php';

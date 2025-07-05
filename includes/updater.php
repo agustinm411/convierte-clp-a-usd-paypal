@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-use Puc_v4_Factory;
+use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -11,8 +11,8 @@ if (!defined('ABSPATH')) {
 require_once plugin_dir_path(__FILE__) . 'lib/plugin-update-checker/plugin-update-checker.php';
 
 // Inicializar el actualizador
-$updateChecker = Puc_v4_Factory::buildUpdateChecker(
-    'https://github.com/TU-USUARIO/clp-to-usd-paypal/',
+$updateChecker = PucFactory::buildUpdateChecker(
+    'https://github.com/agustinm411/convierte-clp-a-usd-paypal/',
     dirname(__DIR__) . '/clp-to-usd-paypal.php',
     'clp-to-usd-paypal'
 );
