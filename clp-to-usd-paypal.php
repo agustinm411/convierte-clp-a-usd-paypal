@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CLP a USD para PayPal en WooCommerce
  * Description: Convierte automáticamente el monto del pedido de CLP a USD cuando el usuario elige PayPal como método de pago en WooCommerce.
- * Version: 1.01
+ * Version: 1.03
  * Author: Agustín Martínez
  * License: GPL2
  * Text Domain: clp-to-usd-paypal
