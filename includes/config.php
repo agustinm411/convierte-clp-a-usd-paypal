@@ -22,7 +22,7 @@ add_action('woocommerce_update_options_configuracion_mi_plugin', 'guardar_config
 function obtener_configuracion_plugin() {
     $configuraciones = array(
         'section_title' => array(
-            'name'     => __('Ajustes del convertidor', 'text-domain'),
+            'name'     => __('Ajustes de paybridge-clp', 'text-domain'),
             'type'     => 'title',
             'desc'     => ' Configura las opciones de conversión aquí.',
             'id'       => 'mi_plugin_section_title'

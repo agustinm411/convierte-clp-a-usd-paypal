@@ -1,11 +1,11 @@
 <?php
 /**
- * Plugin Name: CLP a USD para PayPal en WooCommerce
- * Description: Convierte automáticamente el monto del pedido de CLP a USD cuando el usuario elige PayPal como método de pago en WooCommerce.
- * Version: 1.03
+ * Plugin Name: paybridge-clp
+ * Description: cambia automáticamente la moneda del pedido de CLP a USD cuando el usuario elige PayPal como método de pago en WooCommerce.
+ * Version: 1.04
  * Author: Agustín Martínez
  * License: GPL2
- * Text Domain: clp-to-usd-paypal
+ * Text Domain: paybridge-clp
  */
 require plugin_dir_path( __FILE__ ) . 'includes/functions.php';
 require plugin_dir_path( __FILE__ ) . 'includes/config.php';
