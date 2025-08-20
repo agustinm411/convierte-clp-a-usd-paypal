@@ -2,7 +2,7 @@
 /**
  * Plugin Name: paybridge-clp
  * Description: cambia automáticamente la moneda del pedido de CLP a USD cuando el usuario elige PayPal como método de pago en WooCommerce.
- * Version: 1.04
+ * Version: 1.05
  * Author: Agustín Martínez
  * License: GPL2
  * Text Domain: paybridge-clp
