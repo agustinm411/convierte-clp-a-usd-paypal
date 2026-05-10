@@ -1,4 +1,9 @@
 <?php
+
+
+
+    
+
 function obtener_metodo_pago_seleccionado(): string|false
 {
     if (!WC()->session) {
@@ -17,6 +22,5 @@ function obtener_metodo_pago_seleccionado(): string|false
 add_action('wp_footer', function () {
     if (is_checkout()) {
         $metodo = obtener_metodo_pago_seleccionado();
-        var_dump($metodo);
     }
 });

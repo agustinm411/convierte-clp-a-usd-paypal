@@ -14,7 +14,7 @@ require plugin_dir_path( __FILE__ ) . 'includes/core/currency.php';
 require plugin_dir_path( __FILE__ ) . 'includes/core/filters.php';
 require plugin_dir_path( __FILE__ ) . 'includes/core/actions.php';
 require plugin_dir_path( __FILE__ ) . 'includes/core/convert-currency.php';
-require_once plugin_dir_path(__FILE__) . 'includes/updater.php';
+//require_once plugin_dir_path(__FILE__) . 'includes/updater.php';
 if (!defined('ABSPATH')) {
     exit;
 }

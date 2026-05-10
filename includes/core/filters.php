@@ -1,4 +1,5 @@
 <?php
+
 add_filter('woocommerce_currency', function (string $currency): string {
     // Usar la sesión de WooCommerce
     if (function_exists('WC') && WC()->session) {
