@@ -1,0 +1,30 @@
+name: Publicar release
+
+# Crea el tag y el release de GitHub para una versión del plugin.
+# El updater (plugin-update-checker) usa el último release publicado
+# para ofrecer la actualización en el administrador de WordPress.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versión a publicar (nombre del tag, por ejemplo 2.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Crear tag y release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          gh release create "$VERSION" \
+            --target "$GITHUB_SHA" \
+            --title "versión $VERSION" \
+            --notes "Versión $VERSION"
