@@ -1,48 +1,80 @@
 <?php
 
-function agregar_configuracion_plugin_a_woocommerce($settings_tabs) {
-    $settings_tabs['configuracion_mi_plugin'] = __('convertidor de peso chileno a dólar', 'text-domain');
-    return $settings_tabs;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
-add_filter('woocommerce_settings_tabs_array', 'agregar_configuracion_plugin_a_woocommerce', 50);
 
+add_filter( 'woocommerce_settings_tabs_array', 'paybridge_clp_agregar_pestana_configuracion', 50 );
+add_action( 'woocommerce_settings_tabs_paybridge_clp', 'paybridge_clp_mostrar_configuracion' );
+add_action( 'woocommerce_update_options_paybridge_clp', 'paybridge_clp_guardar_configuracion' );
+add_action( 'admin_init', 'paybridge_clp_migrar_opciones' );
 
-function mostrar_configuracion_plugin_woocommerce() {
-    woocommerce_admin_fields(obtener_configuracion_plugin());
+function paybridge_clp_agregar_pestana_configuracion( array $settings_tabs ): array {
+	$settings_tabs['paybridge_clp'] = __( 'PayBridge CLP', 'paybridge-clp' );
+	return $settings_tabs;
 }
-add_action('woocommerce_settings_tabs_configuracion_mi_plugin', 'mostrar_configuracion_plugin_woocommerce');
 
-
-function guardar_configuracion_plugin_woocommerce() {
-    woocommerce_update_options(obtener_configuracion_plugin());
+function paybridge_clp_mostrar_configuracion(): void {
+	woocommerce_admin_fields( paybridge_clp_obtener_campos_configuracion() );
 }
-add_action('woocommerce_update_options_configuracion_mi_plugin', 'guardar_configuracion_plugin_woocommerce');
 
+function paybridge_clp_guardar_configuracion(): void {
+	woocommerce_update_options( paybridge_clp_obtener_campos_configuracion() );
+	// El tipo de cambio manual pudo cambiar; descarta el valor cacheado de la API.
+	delete_transient( 'paybridge_clp_dolar_api' );
+}
 
-function obtener_configuracion_plugin() {
-    $configuraciones = array(
-        'section_title' => array(
-            'name'     => __('Ajustes de paybridge-clp', 'text-domain'),
-            'type'     => 'title',
-            'desc'     => ' Configura las opciones de conversión aquí.',
-            'id'       => 'mi_plugin_section_title'
-        ),
-        'campo_texto' => array(
-            'name' => __('Valor en pesos chilenos', 'text-domain'),
-            'type' => 'text',
-            'desc' => __('Ingrese el valor en pesos chilenos (por ejemplo 900 si 1 dólar = a 900 clp).', 'text-domain'),
-            'id'   => 'mi_plugin_campo_texto'
-        ),
-        'campo_checkbox' => array(
-            'name'    => __('Habilitar clave de api externa', 'text-domain'),
-            'type'    => 'checkbox',
-            'desc'    => __('Marcar para activar la función.', 'text-domain'),
-            'id'      => 'mi_plugin_campo_checkbox'
-        ),
-        'section_end' => array(
-            'type' => 'sectionend',
-            'id'   => 'mi_plugin_section_end'
-        )
-    );
-    return $configuraciones;
+function paybridge_clp_obtener_campos_configuracion(): array {
+	return array(
+		'section_title'  => array(
+			'name' => __( 'Ajustes de PayBridge CLP', 'paybridge-clp' ),
+			'type' => 'title',
+			'desc' => __( 'Configura las opciones de conversión de CLP a USD aquí.', 'paybridge-clp' ),
+			'id'   => 'paybridge_clp_section_title',
+		),
+		'tipo_cambio'    => array(
+			'name'              => __( 'Valor del dólar en pesos chilenos', 'paybridge-clp' ),
+			'type'              => 'number',
+			'desc'              => __( 'Ingrese cuántos pesos chilenos equivalen a 1 dólar (por ejemplo 900 si 1 USD = 900 CLP).', 'paybridge-clp' ),
+			'id'                => 'paybridge_clp_tipo_cambio',
+			'custom_attributes' => array(
+				'min'  => '1',
+				'step' => '0.01',
+			),
+		),
+		'usar_api'       => array(
+			'name' => __( 'Obtener el tipo de cambio automáticamente', 'paybridge-clp' ),
+			'type' => 'checkbox',
+			'desc' => __( 'Obtiene el valor del dólar desde mindicador.cl (se actualiza cada 6 horas). Si la API no responde, se usa el valor manual de arriba.', 'paybridge-clp' ),
+			'id'   => 'paybridge_clp_usar_api',
+		),
+		'section_end'    => array(
+			'type' => 'sectionend',
+			'id'   => 'paybridge_clp_section_end',
+		),
+	);
+}
+
+/**
+ * Migra las opciones con nombres genéricos de versiones anteriores
+ * (mi_plugin_campo_texto / mi_plugin_campo_checkbox) a las nuevas con prefijo.
+ */
+function paybridge_clp_migrar_opciones(): void {
+	if ( get_option( 'paybridge_clp_version' ) === PAYBRIDGE_CLP_VERSION ) {
+		return;
+	}
+
+	$tipo_cambio_antiguo = get_option( 'mi_plugin_campo_texto', null );
+	if ( null !== $tipo_cambio_antiguo && null === get_option( 'paybridge_clp_tipo_cambio', null ) ) {
+		update_option( 'paybridge_clp_tipo_cambio', $tipo_cambio_antiguo );
+	}
+
+	$checkbox_antiguo = get_option( 'mi_plugin_campo_checkbox', null );
+	if ( null !== $checkbox_antiguo && null === get_option( 'paybridge_clp_usar_api', null ) ) {
+		update_option( 'paybridge_clp_usar_api', $checkbox_antiguo );
+	}
+
+	delete_option( 'mi_plugin_campo_texto' );
+	delete_option( 'mi_plugin_campo_checkbox' );
+	update_option( 'paybridge_clp_version', PAYBRIDGE_CLP_VERSION );
 }

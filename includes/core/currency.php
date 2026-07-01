@@ -1,81 +1,85 @@
 <?php
-function obtener_moneda_woocommerce(): string {
-    return get_option('woocommerce_currency', 'CLP');
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
-function cambiar_moneda_woocommerce(string $nueva_moneda) {
-check_ajax_referer('cambio_moneda_nonce');
-$nueva = strtoupper(sanitize_text_field($nueva_moneda));
-    $permitidas = ['USD', 'CLP'];
+/**
+ * Handler AJAX: activa la moneda temporal de la sesión (USD o CLP).
+ */
+function paybridge_clp_manejar_cambio_moneda(): void {
+	check_ajax_referer( 'cambio_moneda_nonce' );
 
-    if (!in_array($nueva, $permitidas, true)) {
-        return "Error: Moneda no permitida.";
-    }
+	$moneda = isset( $_POST['moneda'] )
+		? strtoupper( sanitize_text_field( wp_unslash( $_POST['moneda'] ) ) )
+		: 'USD';
 
-    if (function_exists('WC') && WC()->session) {
-        WC()->session->set('moneda_temporal', $nueva);
-wp_send_json_success([
-        'message' => 'Moneda cambiada',
-         'currency' => $nueva_moneda,
-    ]);
-return true;
-    }
+	if ( ! in_array( $moneda, array( 'USD', 'CLP' ), true ) ) {
+		wp_send_json_error( array( 'message' => __( 'Moneda no permitida.', 'paybridge-clp' ) ), 400 );
+	}
 
-    // Fallback extremo (no recomendado, pero evita roturas si no hay WC session)
-    if (session_status() === PHP_SESSION_NONE) {
-        @session_start();
-    }
-    $_SESSION['moneda_temporal'] = $nueva;
-    return true;
+	if ( ! function_exists( 'WC' ) || ! WC()->session ) {
+		wp_send_json_error( array( 'message' => __( 'La sesión de WooCommerce no está disponible.', 'paybridge-clp' ) ), 500 );
+	}
+
+	WC()->session->set( 'moneda_temporal', $moneda );
+
+	wp_send_json_success(
+		array(
+			'message'  => __( 'Moneda cambiada.', 'paybridge-clp' ),
+			'currency' => $moneda,
+		)
+	);
 }
 
-function manejar_cambio_moneda() {
-    echo cambiar_moneda_woocommerce('USD');
-    wp_die();
+/**
+ * Handler AJAX: elimina la moneda temporal de la sesión.
+ */
+function paybridge_clp_eliminar_sesion_moneda(): void {
+	check_ajax_referer( 'cambio_moneda_nonce' );
+
+	if ( function_exists( 'WC' ) && WC()->session ) {
+		WC()->session->set( 'moneda_temporal', null );
+		WC()->session->__unset( 'moneda_temporal' );
+	}
+
+	wp_send_json_success( array( 'message' => __( 'Sesión de moneda eliminada.', 'paybridge-clp' ) ) );
 }
 
-function agregar_script_cambio_moneda(): void {
-    $handle      = 'cambio-moneda';
-    $script_rel  = '../js/cambio-moneda.js';
-    $script_path = plugin_dir_path(__FILE__) . $script_rel;
-    $script_url  = plugin_dir_url(__FILE__) . $script_rel;
+/**
+ * Encola el script de cambio de moneda solo en carrito y checkout.
+ */
+function paybridge_clp_agregar_script_cambio_moneda(): void {
+	if ( ! is_cart() && ! is_checkout() ) {
+		return;
+	}
 
-    // Usa filemtime para cache-busting en desarrollo.
-    $version = file_exists($script_path) ? (string) filemtime($script_path) : '1.0.0';
+	$handle      = 'paybridge-clp-cambio-moneda';
+	$script_rel  = '../js/cambio-moneda.js';
+	$script_path = plugin_dir_path( __FILE__ ) . $script_rel;
+	$script_url  = plugin_dir_url( __FILE__ ) . $script_rel;
 
-    wp_enqueue_script(
-        $handle,
-        $script_url,
-        ['jquery'],   // jQuery es necesario porque tu JS dispara eventos jQuery.
-        $version,
-        true          // En el footer.
-    );
+	// filemtime como cache-busting; si no existe, usa la versión del plugin.
+	$version = file_exists( $script_path ) ? (string) filemtime( $script_path ) : PAYBRIDGE_CLP_VERSION;
 
-    // Expone ajaxurl + nonce a tu JS como window.cambioMonedaData
-    wp_localize_script($handle, 'cambioMonedaData', [
-        'ajaxurl' => admin_url('admin-ajax.php'),
-        'nonce'   => wp_create_nonce('cambio_moneda_nonce'),
-    ]);
+	wp_enqueue_script( $handle, $script_url, array(), $version, true );
+
+	wp_localize_script(
+		$handle,
+		'cambioMonedaData',
+		array(
+			'ajaxurl' => admin_url( 'admin-ajax.php' ),
+			'nonce'   => wp_create_nonce( 'cambio_moneda_nonce' ),
+		)
+	);
 }
 
-function eliminar_sesion_moneda() {
-    // Limpiar WC session
-check_ajax_referer('cambio_moneda_nonce');
-if (function_exists('WC') && WC()->session) {
-        // Dos formas de limpiar, según la versión
-        WC()->session->set('moneda_temporal', null);
-        if (method_exists(WC()->session, '__unset')) {
-            WC()->session->__unset('moneda_temporal');
-        }
-    }
-
-    // Fallback: limpia $_SESSION si existiera
-    if (session_status() === PHP_SESSION_NONE) {
-        @session_start();
-    }
-    if (isset($_SESSION['moneda_temporal'])) {
-        unset($_SESSION['moneda_temporal']);
-    }
-
-    wp_send_json_success(['message' => 'Sesión de moneda eliminada.']);
+/**
+ * Limpia la moneda temporal una vez completado el pedido.
+ */
+function paybridge_clp_limpiar_moneda_tras_pedido(): void {
+	if ( function_exists( 'WC' ) && WC()->session ) {
+		WC()->session->set( 'moneda_temporal', null );
+		WC()->session->__unset( 'moneda_temporal' );
+	}
 }

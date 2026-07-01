@@ -1,58 +1,78 @@
-document.addEventListener("DOMContentLoaded", function () {
-    document.body.addEventListener("change", function (event) {
-        let radioPayPal = document.querySelector("#radio-control-wc-payment-method-options-ppcp-gateway");
-        let metodosPago = document.querySelectorAll("input[name='payment_method']");
+(function () {
+	'use strict';
 
-        if (event.target === radioPayPal && radioPayPal.checked) {
-            cambiarMoneda();
-        } else {
-            let otroMetodoSeleccionado = false;
-            metodosPago.forEach(metodo => {
-                if (metodo !== radioPayPal && metodo.checked) {
-                    otroMetodoSeleccionado = true;
-                }
-            });
+	// IDs de gateway de PayPal: WooCommerce PayPal Payments y PayPal Standard (legado).
+	var METODOS_PAYPAL = ['ppcp-gateway', 'paypal'];
 
-            if (otroMetodoSeleccionado) {
-                eliminarSesionMoneda();
-            }
-        }
-    });
-});
+	function esRadioDePago(el) {
+		return el instanceof HTMLInputElement
+			&& el.type === 'radio'
+			&& (el.name === 'payment_method' || el.name.indexOf('radio-control-wc-payment-method') === 0);
+	}
 
-function cambiarMoneda() {
-    let datos = new FormData();
-    datos.append('action', 'cambiar_moneda');
-datos.append('_ajax_nonce', cambioMonedaData.nonce);
-fetch(cambioMonedaData.ajaxurl, {
-        method: "POST",
-        body: datos
-    })
-    .then(response => response.text())
-    .then(data => {
-        console.log("Respuesta del servidor:", data);
-        actualizarPrecios();
-    })
-    .catch(error => console.error("Error al cambiar la moneda:", error));
-}
+	// Delegación sobre document: funciona con el checkout clásico y el de bloques,
+	// aunque el formulario de pago se vuelva a renderizar.
+	document.addEventListener('change', function (event) {
+		var radio = event.target;
 
-function eliminarSesionMoneda() {
-    let datos = new FormData();
-    datos.append('action', 'eliminar_sesion_moneda');
-datos.append('_ajax_nonce', cambioMonedaData.nonce);
-    fetch(cambioMonedaData.ajaxurl, {
-        method: "POST",
-        body: datos
-    })
-    .then(response => response.text())
-    .then(data => {
-        console.log("Sesión eliminada:", data);
-        actualizarPrecios();
-    })
-    .catch(error => console.error("Error al eliminar la sesión de moneda:", error));
-}
+		if (!esRadioDePago(radio) || !radio.checked) {
+			return;
+		}
 
-function actualizarPrecios() {
-    jQuery(document.body).trigger('wc_fragment_refresh'); 
-    jQuery(document.body).trigger('update_checkout');
-}
+		if (METODOS_PAYPAL.indexOf(radio.value) !== -1) {
+			cambiarMoneda();
+		} else {
+			eliminarSesionMoneda();
+		}
+	});
+
+	function peticionAjax(accion) {
+		var datos = new FormData();
+		datos.append('action', accion);
+		datos.append('_ajax_nonce', cambioMonedaData.nonce);
+
+		return fetch(cambioMonedaData.ajaxurl, {
+			method: 'POST',
+			body: datos
+		}).then(function (respuesta) {
+			return respuesta.json();
+		}).then(function (json) {
+			if (!json.success) {
+				throw new Error(json.data && json.data.message ? json.data.message : 'Error desconocido');
+			}
+			return json.data;
+		});
+	}
+
+	function cambiarMoneda() {
+		peticionAjax('cambiar_moneda')
+			.then(actualizarPrecios)
+			.catch(function (error) {
+				console.error('PayBridge CLP: error al cambiar la moneda:', error);
+			});
+	}
+
+	function eliminarSesionMoneda() {
+		peticionAjax('eliminar_sesion_moneda')
+			.then(actualizarPrecios)
+			.catch(function (error) {
+				console.error('PayBridge CLP: error al restaurar la moneda:', error);
+			});
+	}
+
+	function actualizarPrecios() {
+		// Checkout clásico y mini-carrito.
+		if (window.jQuery) {
+			window.jQuery(document.body).trigger('wc_fragment_refresh');
+			window.jQuery(document.body).trigger('update_checkout');
+		}
+
+		// Checkout por bloques: fuerza a la tienda de datos a recargar el carrito.
+		if (window.wp && window.wp.data && typeof window.wp.data.dispatch === 'function') {
+			var cartStore = window.wp.data.dispatch('wc/store/cart');
+			if (cartStore && typeof cartStore.invalidateResolutionForStore === 'function') {
+				cartStore.invalidateResolutionForStore();
+			}
+		}
+	}
+})();
