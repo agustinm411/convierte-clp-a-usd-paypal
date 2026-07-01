@@ -17,7 +17,9 @@ function paybridge_clp_usd_activo(): bool {
  * Devuelve cuántos CLP equivalen a 1 USD.
  *
  * Si la opción de API está activa, consulta mindicador.cl y cachea el valor
- * 6 horas en un transient; si la API falla, usa el valor manual configurado.
+ * 6 horas en un transient; cada valor obtenido correctamente de la API
+ * sobreescribe además el valor manual configurado. Si la API falla, se usa
+ * el valor manual.
  *
  * @return float Tipo de cambio, o 0.0 si no hay un valor válido configurado.
  */
@@ -34,6 +36,9 @@ function paybridge_clp_obtener_tipo_cambio(): float {
 
 				if ( $valor_api > 0 ) {
 					set_transient( 'paybridge_clp_dolar_api', $valor_api, 6 * HOUR_IN_SECONDS );
+					// Mantiene el valor manual sincronizado con el último valor de la API,
+					// para que sirva de respaldo actualizado si la API deja de responder.
+					update_option( 'paybridge_clp_tipo_cambio', (string) $valor_api );
 				}
 			}
 		}

@@ -45,7 +45,7 @@ function paybridge_clp_obtener_campos_configuracion(): array {
 		'usar_api'       => array(
 			'name' => __( 'Obtener el tipo de cambio automáticamente', 'paybridge-clp' ),
 			'type' => 'checkbox',
-			'desc' => __( 'Obtiene el valor del dólar desde mindicador.cl (se actualiza cada 6 horas). Si la API no responde, se usa el valor manual de arriba.', 'paybridge-clp' ),
+			'desc' => __( 'Obtiene el valor del dólar desde mindicador.cl (se actualiza cada 6 horas) y sobreescribe el valor manual de arriba con cada actualización. Si la API no responde, se usa el valor manual.', 'paybridge-clp' ),
 			'id'   => 'paybridge_clp_usar_api',
 		),
 		'section_end'    => array(
