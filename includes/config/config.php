@@ -65,8 +65,9 @@ function paybridge_clp_migrar_opciones(): void {
 	}
 
 	$tipo_cambio_antiguo = get_option( 'mi_plugin_campo_texto', null );
-	if ( null !== $tipo_cambio_antiguo && null === get_option( 'paybridge_clp_tipo_cambio', null ) ) {
-		update_option( 'paybridge_clp_tipo_cambio', $tipo_cambio_antiguo );
+	if ( null !== $tipo_cambio_antiguo && null === get_option( 'paybridge_clp_tipo_cambio', null )
+		&& is_numeric( $tipo_cambio_antiguo ) && (float) $tipo_cambio_antiguo > 0 ) {
+		update_option( 'paybridge_clp_tipo_cambio', (string) (float) $tipo_cambio_antiguo );
 	}
 
 	$checkbox_antiguo = get_option( 'mi_plugin_campo_checkbox', null );

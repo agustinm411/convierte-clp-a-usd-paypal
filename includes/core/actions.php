@@ -15,3 +15,7 @@ add_action( 'woocommerce_cart_totals_after_order_total', 'paybridge_clp_mostrar_
 add_action( 'woocommerce_review_order_after_order_total', 'paybridge_clp_mostrar_total_en_dolares' );
 
 add_action( 'woocommerce_thankyou', 'paybridge_clp_limpiar_moneda_tras_pedido' );
+
+// Validación en servidor: USD solo con PayPal (checkout clásico y por bloques).
+add_action( 'woocommerce_checkout_process', 'paybridge_clp_validar_gateway_checkout_clasico' );
+add_action( 'woocommerce_store_api_checkout_update_order_from_request', 'paybridge_clp_validar_gateway_checkout_bloques', 10, 2 );
