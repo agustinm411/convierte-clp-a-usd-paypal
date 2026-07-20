@@ -34,7 +34,7 @@ function paybridge_clp_obtener_tipo_cambio(): float {
 				$datos     = json_decode( wp_remote_retrieve_body( $respuesta ), true );
 				$valor_api = isset( $datos['serie'][0]['valor'] ) ? (float) $datos['serie'][0]['valor'] : 0.0;
 
-				if ( $valor_api > 0 ) {
+				if ( paybridge_clp_tipo_cambio_es_plausible( $valor_api ) ) {
 					set_transient( 'paybridge_clp_dolar_api', $valor_api, 6 * HOUR_IN_SECONDS );
 					// Mantiene el valor manual sincronizado con el último valor de la API,
 					// para que sirva de respaldo actualizado si la API deja de responder.
@@ -43,7 +43,7 @@ function paybridge_clp_obtener_tipo_cambio(): float {
 			}
 		}
 
-		if ( is_numeric( $valor_api ) && $valor_api > 0 ) {
+		if ( is_numeric( $valor_api ) && paybridge_clp_tipo_cambio_es_plausible( (float) $valor_api ) ) {
 			return (float) $valor_api;
 		}
 	}
@@ -51,6 +51,17 @@ function paybridge_clp_obtener_tipo_cambio(): float {
 	$valor_manual = get_option( 'paybridge_clp_tipo_cambio', '' );
 
 	return ( is_numeric( $valor_manual ) && $valor_manual > 0 ) ? (float) $valor_manual : 0.0;
+}
+
+/**
+ * Comprueba que un tipo de cambio CLP/USD esté en un rango plausible.
+ *
+ * Protege contra respuestas corruptas o manipuladas de la API: un valor
+ * fuera de rango (p. ej. 1 o 900000) distorsionaría todos los precios de
+ * la tienda y además sobreescribiría el valor manual de respaldo.
+ */
+function paybridge_clp_tipo_cambio_es_plausible( float $valor ): bool {
+	return $valor >= 100 && $valor <= 5000;
 }
 
 /**

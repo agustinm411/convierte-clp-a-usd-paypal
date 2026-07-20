@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Handler AJAX: activa la moneda temporal de la sesión (USD o CLP).
  */
 function paybridge_clp_manejar_cambio_moneda(): void {
-	check_ajax_referer( 'cambio_moneda_nonce' );
+	check_ajax_referer( 'cambio_moneda_nonce', '_ajax_nonce', true );
 
 	$moneda = isset( $_POST['moneda'] )
 		? strtoupper( sanitize_text_field( wp_unslash( $_POST['moneda'] ) ) )
@@ -36,7 +36,7 @@ function paybridge_clp_manejar_cambio_moneda(): void {
  * Handler AJAX: elimina la moneda temporal de la sesión.
  */
 function paybridge_clp_eliminar_sesion_moneda(): void {
-	check_ajax_referer( 'cambio_moneda_nonce' );
+	check_ajax_referer( 'cambio_moneda_nonce', '_ajax_nonce', true );
 
 	if ( function_exists( 'WC' ) && WC()->session ) {
 		WC()->session->set( 'moneda_temporal', null );
@@ -72,6 +72,61 @@ function paybridge_clp_agregar_script_cambio_moneda(): void {
 			'nonce'   => wp_create_nonce( 'cambio_moneda_nonce' ),
 		)
 	);
+}
+
+/**
+ * Gateways de PayPal con los que se permite pagar en USD.
+ *
+ * @return string[]
+ */
+function paybridge_clp_gateways_paypal(): array {
+	return array( 'ppcp-gateway', 'paypal' );
+}
+
+/**
+ * Validación en servidor: la conversión a USD solo es válida si el pedido se
+ * paga con PayPal. El cambio de moneda por AJAX lo puede invocar cualquier
+ * visitante, así que la lógica del JavaScript del navegador no es suficiente.
+ */
+function paybridge_clp_validar_gateway_checkout_clasico(): void {
+	if ( ! paybridge_clp_usd_activo() ) {
+		return;
+	}
+
+	// El nonce del checkout ya fue verificado por WooCommerce.
+	// phpcs:ignore WordPress.Security.NonceVerification.Missing
+	$gateway = isset( $_POST['payment_method'] ) ? sanitize_text_field( wp_unslash( $_POST['payment_method'] ) ) : '';
+
+	if ( ! in_array( $gateway, paybridge_clp_gateways_paypal(), true ) ) {
+		paybridge_clp_limpiar_moneda_tras_pedido();
+		wc_add_notice(
+			__( 'El pago en dólares (USD) solo está disponible con PayPal. Se restauró la moneda a CLP; revisa el total e intenta nuevamente.', 'paybridge-clp' ),
+			'error'
+		);
+	}
+}
+
+/**
+ * Misma validación para el checkout por bloques (Store API).
+ *
+ * @param \WC_Order        $order   Pedido en construcción.
+ * @param \WP_REST_Request $request Petición del checkout por bloques.
+ */
+function paybridge_clp_validar_gateway_checkout_bloques( $order, $request ): void {
+	if ( ! paybridge_clp_usd_activo() ) {
+		return;
+	}
+
+	$gateway = isset( $request['payment_method'] ) ? sanitize_text_field( (string) $request['payment_method'] ) : '';
+
+	if ( ! in_array( $gateway, paybridge_clp_gateways_paypal(), true ) ) {
+		paybridge_clp_limpiar_moneda_tras_pedido();
+		throw new \Automattic\WooCommerce\StoreApi\Exceptions\RouteException(
+			'paybridge_clp_gateway_invalido',
+			esc_html__( 'El pago en dólares (USD) solo está disponible con PayPal. Se restauró la moneda a CLP; revisa el total e intenta nuevamente.', 'paybridge-clp' ),
+			400
+		);
+	}
 }
 
 /**
